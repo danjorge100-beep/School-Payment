@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Payment System — Database Design</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="eyebrow">DATABASE DESIGN</div>
+      <h1>School Payment System</h1>
+      <p>Entity Relationship Diagram &amp; Database Documentation</p>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <button class="nav-btn active" data-target="erd-section">ER Diagram</button>
+    <button class="nav-btn" data-target="normalization-section">Normalize Schema</button>
+    <button class="nav-btn" data-target="sql-section">SQL Script</button>
+    <button class="nav-btn" data-target="queries-section">Queries</button>
+  </nav>
+
+  <main>
+    <section id="erd-section" class="page-section active-section">
+      <section class="stats">
+        <div class="stat-card"><strong id="entityCount">06</strong><span>Entities</span></div>
+        <div class="stat-card"><strong id="relationshipCount">07</strong><span>Relationships</span></div>
+        <div class="stat-card"><strong id="enumCount">03</strong><span>Enums</span></div>
+        <div class="info-card">
+          <h2>School Payment System ERD</h2>
+          <p>Database entities, attributes, primary keys, foreign keys, unique fields, enums, and relationships based on the supplied DBML.</p>
+        </div>
+      </section>
+
+      <section class="legend">
+        <span class="legend-title">LEGEND</span>
+        <span><b class="badge pk">PK</b> Primary Key</span>
+        <span><b class="badge fk">FK</b> Foreign Key</span>
+        <span><b class="badge unique">U</b> Unique</span>
+        <span><b class="required">*</b> Required</span>
+        <span><i class="relationship-sample"></i> Relationship</span>
+      </section>
+
+      <section class="diagram-shell">
+        <div class="diagram-toolbar">
+          <div><span class="toolbar-dot"></span>Interactive ER Diagram</div>
+          <button id="resetBtn" type="button">Reset Layout</button>
+        </div>
+        <div id="diagram" class="diagram">
+          <svg id="connections" aria-hidden="true"></svg>
+          <div id="tables"></div>
+        </div>
+      </section>
+    </section>
+
+    <section id="normalization-section" class="page-section">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">DATABASE NORMALIZATION</div>
+          <h2>Normalized Schema</h2>
+        </div>
+        <p>Designed to reduce duplication and maintain data integrity through 1NF, 2NF, and 3NF.</p>
+      </div>
+
+      <div class="normalization-grid">
+        <article class="norm-card">
+          <div class="norm-number">01</div>
+          <h3>First Normal Form (1NF)</h3>
+          <p>Each field stores a single atomic value. Repeating groups are avoided, and each table has a primary key.</p>
+          <ul>
+            <li>Atomic student and profile attributes</li>
+            <li>One fee per student-fee record</li>
+            <li>One payment item per payment-fee combination</li>
+          </ul>
+        </article>
+
+        <article class="norm-card">
+          <div class="norm-number">02</div>
+          <h3>Second Normal Form (2NF)</h3>
+          <p>Non-key attributes depend on the complete primary key rather than only part of a key.</p>
+          <ul>
+            <li>Payment details belong to <code>payments</code></li>
+            <li>Fee definitions belong to <code>fee_types</code></li>
+            <li>Student-specific fee balances belong to <code>student_fees</code></li>
+          </ul>
+        </article>
+
+        <article class="norm-card">
+          <div class="norm-number">03</div>
+          <h3>Third Normal Form (3NF)</h3>
+          <p>Non-key attributes depend on the key, the whole key, and nothing but the key.</p>
+          <ul>
+            <li>User information is separated into <code>profiles</code></li>
+            <li>Fee descriptions are stored once in <code>fee_types</code></li>
+            <li>Payment line items are separated from payment headers</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="schema-table-wrap">
+        <h3>Normalized Schema Overview</h3>
+        <table class="schema-table">
+          <thead>
+            <tr><th>Table</th><th>Purpose</th><th>Primary Key</th><th>Foreign Keys</th><th>Normalization</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>profiles</td><td>System user identity and role</td><td>id</td><td>—</td><td>3NF</td></tr>
+            <tr><td>students</td><td>Student academic and contact data</td><td>student_id</td><td>profile_id → profiles.id</td><td>3NF</td></tr>
+            <tr><td>fee_types</td><td>Reusable fee definitions</td><td>fee_type_id</td><td>—</td><td>3NF</td></tr>
+            <tr><td>student_fees</td><td>Fees assigned to individual students</td><td>student_fee_id</td><td>student_id, fee_type_id</td><td>3NF</td></tr>
+            <tr><td>payments</td><td>Payment transaction header</td><td>payment_id</td><td>student_id, cashier_id</td><td>3NF</td></tr>
+            <tr><td>payment_items</td><td>Fees included in each payment</td><td>payment_item_id</td><td>payment_id, student_fee_id</td><td>3NF</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="sql-section" class="page-section">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">DATABASE IMPLEMENTATION</div>
+          <h2>SQL Script</h2>
+        </div>
+        <button class="copy-btn" data-copy="sqlCode">Copy SQL</button>
+      </div>
+
+      <div class="code-panel">
+        <pre><code id="sqlCode">-- SCHOOL PAYMENT SYSTEM
+-- PostgreSQL / Supabase compatible
+
+CREATE TYPE user_role AS ENUM ('student', 'cashier', 'admin');
+CREATE TYPE payment_method AS ENUM ('cash', 'gcash');
+CREATE TYPE payment_status AS ENUM ('pending', 'successful', 'failed', 'cancelled');
+
+CREATE TABLE profiles (
+    id uuid PRIMARY KEY,
+    full_name text NOT NULL,
+    email text UNIQUE,
+    role user_role NOT NULL,
+    created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE students (
+    student_id text PRIMARY KEY,
+    profile_id uuid UNIQUE REFERENCES profiles(id),
+    first_name text NOT NULL,
+    middle_name text,
+    last_name text NOT NULL,
+    course text,
+    year_level int,
+    section text,
+    contact_number text,
+    created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE fee_types (
+    fee_type_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fee_name text NOT NULL UNIQUE,
+    description text,
+    created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE student_fees (
+    student_fee_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    student_id text NOT NULL REFERENCES students(student_id),
+    fee_type_id bigint NOT NULL REFERENCES fee_types(fee_type_id),
+    amount_due decimal(12,2) NOT NULL CHECK (amount_due >= 0),
+    amount_paid decimal(12,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
+    due_date date,
+    created_at timestamptz DEFAULT now(),
+    CHECK (amount_paid <= amount_due)
+);
+
+CREATE TABLE payments (
+    payment_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    receipt_number text NOT NULL UNIQUE,
+    student_id text NOT NULL REFERENCES students(student_id),
+    cashier_id uuid REFERENCES profiles(id),
+    payment_method payment_method NOT NULL,
+    total_amount decimal(12,2) NOT NULL CHECK (total_amount > 0),
+    status payment_status DEFAULT 'pending',
+    payment_date timestamptz DEFAULT now(),
+    notes text
+);
+
+CREATE TABLE payment_items (
+    payment_item_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    payment_id bigint NOT NULL REFERENCES payments(payment_id),
+    student_fee_id bigint NOT NULL REFERENCES student_fees(student_fee_id),
+    amount_paid decimal(12,2) NOT NULL CHECK (amount_paid > 0)
+);
+
+CREATE INDEX idx_student_fees_student ON student_fees(student_id);
+CREATE INDEX idx_student_fees_type ON student_fees(fee_type_id);
+CREATE INDEX idx_payments_student ON payments(student_id);
+CREATE INDEX idx_payments_cashier ON payments(cashier_id);
+CREATE INDEX idx_payment_items_payment ON payment_items(payment_id);
+CREATE INDEX idx_payment_items_fee ON payment_items(student_fee_id);</code></pre>
+      </div>
+    </section>
+
+    <section id="queries-section" class="page-section">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">SQL QUERIES</div>
+          <h2>Useful Database Queries</h2>
+        </div>
+        <p>Examples for demonstrating how the normalized schema can be queried.</p>
+      </div>
+      <div id="queryList" class="query-list"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>School Payment System</span>
+    <span>ERD • Normalization • SQL • Queries</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
